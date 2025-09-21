@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Akses Senter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #4b6cb7, #182848);
+      color: white;
+      margin: 0;
+    }
+    h1 { margin-bottom: 20px; }
+    button {
+      padding: 12px 24px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    #izinBtn { background-color: #28a745; color: white; }
+    #flashBtn { background-color: #ffc107; color: black; display: none; }
+    button:hover { transform: scale(1.05); }
+  </style>
+</head>
+<body>
+  <h1>Akses Senter</h1>
+  <button id="izinBtn">Beri Izin Kamera</button>
+  <button id="flashBtn">Aktifkan / Matikan Senter</button>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+  <script>
+    // TODO: ganti dengan config Firebase milikmu
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const izinBtn = document.getElementById("izinBtn");
+    const flashBtn = document.getElementById("flashBtn");
+    let stream, track, torchOn = false;
+
+    const userId = "user_" + Math.random().toString(36).substr(2, 9);
+    const brand = navigator.userAgent; // Info browser/HP sederhana
+
+    // catat saat pertama kali buka
+    db.ref("users/" + userId).set({
+      userAgent: brand,
+      izin: false,
+      senter: false,
+      time: new Date().toLocaleString()
+    });
+
+    izinBtn.addEventListener("click", async () => {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        track = stream.getVideoTracks()[0];
+        flashBtn.style.display = "inline-block";
+        db.ref("users/" + userId).update({ izin: true });
+        alert("Izin diberikan!");
+      } catch (err) {
+        console.error(err);
+        alert("Gagal meminta izin: " + err);
+      }
+    });
+
+    flashBtn.addEventListener("click", async () => {
+      try {
+        const capabilities = track.getCapabilities();
+        if (capabilities.torch) {
+          torchOn = !torchOn;
+          await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+          db.ref("users/" + userId).update({ senter: torchOn });
+        } else {
+          alert("Perangkat ini tidak mendukung senter.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error: " + err);
+      }
+    });
+  </script>
+</body>
+</html>
